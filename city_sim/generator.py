@@ -9,6 +9,7 @@ from shapely.geometry import LineString, box
 
 from .config import AppConfig
 from .templates import INTERSECTION_TYPES, PORT_ROTATION
+from .internal_roads import generate_internal_roads
 
 
 TypeGrid = list[list[int | tuple[int, int]]]
@@ -133,6 +134,11 @@ def build_raw_network(config: AppConfig, type_grid: TypeGrid | None = None):
                     "to_intersection": intersection_id,
                     "intersection_type": int_type,
                     "rotation": rotation,
+                    "block_id": None,
+                    "transition_a_id": None,
+                    "transition_b_id": None,
+                    "internal_orientation": None,
+                    "internal_grid_slot": None,
                     "geometry": geom,
                 })
                 raw_link_id += 1
@@ -155,7 +161,9 @@ def build_raw_network(config: AppConfig, type_grid: TypeGrid | None = None):
                         "raw_link_id": raw_link_id, "link_type": "transition", "direction": "E",
                         "intersection_id": None, "from_intersection": a["intersection_id"],
                         "to_intersection": b["intersection_id"], "intersection_type": None,
-                        "rotation": None, "geometry": geom,
+                        "rotation": None, "block_id": None, "transition_a_id": None,
+                        "transition_b_id": None, "internal_orientation": None,
+                        "internal_grid_slot": None, "geometry": geom,
                     })
                     raw_link_id += 1
 
@@ -165,7 +173,9 @@ def build_raw_network(config: AppConfig, type_grid: TypeGrid | None = None):
                         "raw_link_id": raw_link_id, "link_type": "transition", "direction": "W",
                         "intersection_id": None, "from_intersection": b["intersection_id"],
                         "to_intersection": a["intersection_id"], "intersection_type": None,
-                        "rotation": None, "geometry": geom,
+                        "rotation": None, "block_id": None, "transition_a_id": None,
+                        "transition_b_id": None, "internal_orientation": None,
+                        "internal_grid_slot": None, "geometry": geom,
                     })
                     raw_link_id += 1
 
@@ -178,7 +188,9 @@ def build_raw_network(config: AppConfig, type_grid: TypeGrid | None = None):
                         "raw_link_id": raw_link_id, "link_type": "transition", "direction": "N",
                         "intersection_id": None, "from_intersection": a["intersection_id"],
                         "to_intersection": b["intersection_id"], "intersection_type": None,
-                        "rotation": None, "geometry": geom,
+                        "rotation": None, "block_id": None, "transition_a_id": None,
+                        "transition_b_id": None, "internal_orientation": None,
+                        "internal_grid_slot": None, "geometry": geom,
                     })
                     raw_link_id += 1
 
@@ -188,9 +200,19 @@ def build_raw_network(config: AppConfig, type_grid: TypeGrid | None = None):
                         "raw_link_id": raw_link_id, "link_type": "transition", "direction": "S",
                         "intersection_id": None, "from_intersection": b["intersection_id"],
                         "to_intersection": a["intersection_id"], "intersection_type": None,
-                        "rotation": None, "geometry": geom,
+                        "rotation": None, "block_id": None, "transition_a_id": None,
+                        "transition_b_id": None, "internal_orientation": None,
+                        "internal_grid_slot": None, "geometry": geom,
                     })
                     raw_link_id += 1
+
+    # =========================================================
+    # 이면도로 생성
+    # n×n grid 샘플 위치를 기준으로 S↔N 수직선 / W↔E 수평선을 생성한다.
+    # 제3 Transition 관통은 허용하지 않고 internal_road끼리의 Point 교차는 허용한다.
+    # =========================================================
+    internal_roads, raw_link_id = generate_internal_roads(raw_links, raw_link_id, config)
+    raw_links.extend(internal_roads)
 
     raw_links_gdf = gpd.GeoDataFrame(raw_links, geometry="geometry", crs=None)
     return type_grid, intersections, raw_links_gdf, intersection_areas

@@ -31,6 +31,20 @@ class TransitionConfig:
 
 
 @dataclass(frozen=True)
+class InternalRoadConfig:
+    enabled: bool
+    block_probability: float
+    min_count_per_block: int
+    max_count_per_block: int
+    sampling_grid_size: int
+    vertical_weight: float
+    horizontal_weight: float
+    transition_endpoint_clearance: float
+    min_length: float
+    max_attempts: int
+
+
+@dataclass(frozen=True)
 class TopologyConfig:
     tolerance: float
     coordinate_precision: int
@@ -55,9 +69,11 @@ class VisualizationConfig:
     grid: bool
     intersection_colors: dict[int, str]
     transition_color: str
+    internal_road_color: str
     node_color: str
     intersection_linewidth: float
     transition_linewidth: float
+    internal_road_linewidth: float
     node_size: float
     node_label_offset: float
     node_label_fontsize: float
@@ -69,6 +85,7 @@ class AppConfig:
     simulation: SimulationConfig
     intersection: IntersectionConfig
     transition: TransitionConfig
+    internal_road: InternalRoadConfig
     topology: TopologyConfig
     output: OutputConfig
     visualization: VisualizationConfig
@@ -85,6 +102,7 @@ def _validate(config: AppConfig) -> None:
     sim = config.simulation
     inter = config.intersection
     topo = config.topology
+    internal = config.internal_road
 
     if sim.grid_size <= 0:
         raise ValueError("simulation.grid_size는 1 이상이어야 합니다.")
@@ -105,6 +123,24 @@ def _validate(config: AppConfig) -> None:
     minx, miny, maxx, maxy = inter.area_bounds
     if minx >= maxx or miny >= maxy:
         raise ValueError("intersection.area_bounds의 min 값은 max 값보다 작아야 합니다.")
+    if not 0 <= internal.block_probability <= 1:
+        raise ValueError("internal_road.block_probability은 0~1 범위여야 합니다.")
+    if internal.min_count_per_block < 0:
+        raise ValueError("internal_road.min_count_per_block은 0 이상이어야 합니다.")
+    if internal.max_count_per_block < internal.min_count_per_block:
+        raise ValueError("internal_road.max_count_per_block은 min_count_per_block 이상이어야 합니다.")
+    if internal.sampling_grid_size <= 0:
+        raise ValueError("internal_road.sampling_grid_size는 1 이상이어야 합니다.")
+    if internal.vertical_weight < 0 or internal.horizontal_weight < 0:
+        raise ValueError("internal_road vertical/horizontal weight는 0 이상이어야 합니다.")
+    if internal.vertical_weight + internal.horizontal_weight <= 0:
+        raise ValueError("internal_road vertical_weight + horizontal_weight 합은 0보다 커야 합니다.")
+    if internal.transition_endpoint_clearance < 0:
+        raise ValueError("internal_road.transition_endpoint_clearance는 0 이상이어야 합니다.")
+    if internal.min_length <= 0:
+        raise ValueError("internal_road.min_length는 0보다 커야 합니다.")
+    if internal.max_attempts <= 0:
+        raise ValueError("internal_road.max_attempts는 1 이상이어야 합니다.")
     if topo.tolerance <= 0:
         raise ValueError("topology.tolerance는 0보다 커야 합니다.")
     if topo.coordinate_precision < 0:
@@ -119,6 +155,7 @@ def load_config(config_path: str | Path) -> AppConfig:
     simulation = _require(raw, "simulation", "root")
     intersection = _require(raw, "intersection", "root")
     transition = _require(raw, "transition", "root")
+    internal_road = _require(raw, "internal_road", "root")
     topology = _require(raw, "topology", "root")
     output = _require(raw, "output", "root")
     visualization = _require(raw, "visualization", "root")
@@ -150,6 +187,18 @@ def load_config(config_path: str | Path) -> AppConfig:
             near_offset=float(_require(transition, "near_offset", "transition")),
             bend_offset=float(_require(transition, "bend_offset", "transition")),
         ),
+        internal_road=InternalRoadConfig(
+            enabled=bool(_require(internal_road, "enabled", "internal_road")),
+            block_probability=float(_require(internal_road, "block_probability", "internal_road")),
+            min_count_per_block=int(_require(internal_road, "min_count_per_block", "internal_road")),
+            max_count_per_block=int(_require(internal_road, "max_count_per_block", "internal_road")),
+            sampling_grid_size=int(_require(internal_road, "sampling_grid_size", "internal_road")),
+            vertical_weight=float(_require(internal_road, "vertical_weight", "internal_road")),
+            horizontal_weight=float(_require(internal_road, "horizontal_weight", "internal_road")),
+            transition_endpoint_clearance=float(_require(internal_road, "transition_endpoint_clearance", "internal_road")),
+            min_length=float(_require(internal_road, "min_length", "internal_road")),
+            max_attempts=int(_require(internal_road, "max_attempts", "internal_road")),
+        ),
         topology=TopologyConfig(
             tolerance=float(_require(topology, "tolerance", "topology")),
             coordinate_precision=int(_require(topology, "coordinate_precision", "topology")),
@@ -170,9 +219,11 @@ def load_config(config_path: str | Path) -> AppConfig:
             grid=bool(_require(visualization, "grid", "visualization")),
             intersection_colors=color_map,
             transition_color=str(_require(visualization, "transition_color", "visualization")),
+            internal_road_color=str(_require(visualization, "internal_road_color", "visualization")),
             node_color=str(_require(visualization, "node_color", "visualization")),
             intersection_linewidth=float(_require(visualization, "intersection_linewidth", "visualization")),
             transition_linewidth=float(_require(visualization, "transition_linewidth", "visualization")),
+            internal_road_linewidth=float(_require(visualization, "internal_road_linewidth", "visualization")),
             node_size=float(_require(visualization, "node_size", "visualization")),
             node_label_offset=float(_require(visualization, "node_label_offset", "visualization")),
             node_label_fontsize=float(_require(visualization, "node_label_fontsize", "visualization")),

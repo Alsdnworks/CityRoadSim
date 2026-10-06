@@ -16,6 +16,9 @@ def plot_network(links_gdf, nodes_gdf, intersections, config: AppConfig, show: b
         if row["link_type"] == "intersection":
             color = vis.intersection_colors.get(int(row["intersection_type"]), "black")
             linewidth = vis.intersection_linewidth
+        elif row["link_type"] == "internal_road":
+            color = vis.internal_road_color
+            linewidth = vis.internal_road_linewidth
         else:
             color = vis.transition_color
             linewidth = vis.transition_linewidth
@@ -23,13 +26,22 @@ def plot_network(links_gdf, nodes_gdf, intersections, config: AppConfig, show: b
         ax.plot(x, y, color=color, linewidth=linewidth)
         coords = list(geom.coords)
         if len(coords) >= 2:
-            ax.annotate(
-                "", xy=coords[-1], xytext=coords[-2],
-                arrowprops=dict(
-                    facecolor=color, edgecolor=color, arrowstyle="-|>", lw=linewidth,
-                    mutation_scale=8, shrinkA=0, shrinkB=0,
-                ),
-            )
+            if row["direction"] == "BOTH":
+                ax.annotate(
+                    "", xy=coords[-1], xytext=coords[0],
+                    arrowprops=dict(
+                        color=color, arrowstyle="<->", lw=linewidth,
+                        mutation_scale=7, shrinkA=0, shrinkB=0,
+                    ),
+                )
+            else:
+                ax.annotate(
+                    "", xy=coords[-1], xytext=coords[-2],
+                    arrowprops=dict(
+                        facecolor=color, edgecolor=color, arrowstyle="-|>", lw=linewidth,
+                        mutation_scale=8, shrinkA=0, shrinkB=0,
+                    ),
+                )
 
     # NODE 표시
     if not nodes_gdf.empty:

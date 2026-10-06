@@ -6,7 +6,7 @@ simulation:
   grid_size: 16
   block_size: 32.0
   center: 2.5
-  seed: 42
+  seed: 67
 
 intersection:
   type_values: [1, 2, 3]
@@ -19,6 +19,23 @@ transition:
   near_offset: 1.0
   bend_offset: 2.0
 
+# 블록 내부 이면도로: n×n grid 샘플 위치에서 축 정렬 양방향 단선을 생성
+internal_road:
+  enabled: true
+  block_probability: 1.0
+  min_count_per_block: 2
+  max_count_per_block: 5
+
+  # 한 Block 내부의 샘플 column/row 수. n이면 n개 X column + n개 Y row 후보를 만든다.
+  sampling_grid_size: 5
+
+  # S↔N 수직선 / W↔E 수평선 선택 가중치. diagonal은 생성하지 않는다.
+  vertical_weight: 0.5
+  horizontal_weight: 0.5
+  transition_endpoint_clearance: 2
+  min_length: 5.0
+  max_attempts: 50
+
 topology:
   tolerance: 1.0e-8
   coordinate_precision: 9
@@ -30,8 +47,8 @@ output:
   overwrite: true
 
 visualization:
-  enabled: true
-  show_window: true
+  enabled: false
+  show_window: false
   show_node_id: false
   figure_size: [14, 14]
   axis_padding_min: 1.0
@@ -42,9 +59,11 @@ visualization:
     2: green
     3: red
   transition_color: black
+  internal_road_color: dimgray
   node_color: black
   intersection_linewidth: 2.5
   transition_linewidth: 1.8
+  internal_road_linewidth: 1.2
   node_size: 30
   node_label_offset: 0.08
   node_label_fontsize: 6

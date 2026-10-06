@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import geopandas as gpd
-from shapely.geometry import GeometryCollection, MultiPoint, Point
-from shapely.ops import split, unary_union
+from shapely.geometry import GeometryCollection, Point
+from shapely.ops import substring, unary_union
 
 from .config import AppConfig
 
@@ -25,7 +25,7 @@ def _extract_intersection_points(intersection) -> list[Point]:
 
 
 def detect_nodes(raw_links_gdf: gpd.GeoDataFrame, intersection_areas: list[dict[str, Any]], config: AppConfig):
-    """실제 교차로 영역 안의 topological junction만 Node로 생성한다."""
+    """교차로 Junction과 internal_road가 포함된 외부 Junction을 Node로 생성한다."""
     tolerance = config.topology.tolerance
     precision = config.topology.coordinate_precision
     intersection_area_union = unary_union([row["geometry"] for row in intersection_areas])
@@ -40,13 +40,21 @@ def detect_nodes(raw_links_gdf: gpd.GeoDataFrame, intersection_areas: list[dict[
             if j <= i:
                 continue
 
-            geom_b = raw_links_gdf.geometry.iloc[j]
+            row_a = raw_links_gdf.iloc[i]
+            row_b = raw_links_gdf.iloc[j]
+            geom_b = row_b.geometry
             intersection = geom_a.intersection(geom_b)
             if intersection.is_empty:
                 continue
 
             for point in _extract_intersection_points(intersection):
-                if not intersection_area_union.covers(point):
+                # 기존 교차로 Node는 intersection area 내부에서만 생성한다.
+                # internal_road가 포함된 교차는 블록 내부/Transition 접속점에서도 Node로 인정한다.
+                internal_related = (
+                    row_a["link_type"] == "internal_road"
+                    or row_b["link_type"] == "internal_road"
+                )
+                if not intersection_area_union.covers(point) and not internal_related:
                     continue
 
                 a_start, a_end = Point(geom_a.coords[0]), Point(geom_a.coords[-1])
@@ -75,7 +83,7 @@ def detect_nodes(raw_links_gdf: gpd.GeoDataFrame, intersection_areas: list[dict[
 
 
 def split_links_at_nodes(raw_links_gdf: gpd.GeoDataFrame, node_points: dict, node_lookup: dict, config: AppConfig):
-    """Node가 LineString 내부에 있을 때만 분할한다. Transition vertex는 분할하지 않는다."""
+    """Node의 LineString 투영거리 기준으로 분할한다. Transition vertex는 Node가 아니므로 분할되지 않는다."""
     tolerance = config.topology.tolerance
     precision = config.topology.coordinate_precision
     final_links = []
@@ -83,20 +91,29 @@ def split_links_at_nodes(raw_links_gdf: gpd.GeoDataFrame, node_points: dict, nod
 
     for _, row in raw_links_gdf.iterrows():
         geom = row.geometry
-        start_point, end_point = Point(geom.coords[0]), Point(geom.coords[-1])
-        split_points = []
+        geom_length = geom.length
+        split_distances = []
 
         for node_point in node_points.values():
             if geom.distance(node_point) > tolerance:
                 continue
-            if node_point.distance(start_point) > tolerance and node_point.distance(end_point) > tolerance:
-                split_points.append(node_point)
 
-        if split_points:
-            result = split(geom, MultiPoint(split_points))
-            parts = [part for part in result.geoms if part.geom_type == "LineString" and part.length > tolerance]
-        else:
-            parts = [geom]
+            distance = geom.project(node_point)
+            if distance <= tolerance or geom_length - distance <= tolerance:
+                continue
+
+            if not any(abs(distance - existing) <= tolerance for existing in split_distances):
+                split_distances.append(distance)
+
+        split_distances.sort()
+        boundaries = [0.0, *split_distances, geom_length]
+        parts = []
+        for start_distance, end_distance in zip(boundaries[:-1], boundaries[1:]):
+            if end_distance - start_distance <= tolerance:
+                continue
+            part = substring(geom, start_distance, end_distance)
+            if part.geom_type == "LineString" and part.length > tolerance:
+                parts.append(part)
 
         for part_no, part in enumerate(parts):
             part_start, part_end = Point(part.coords[0]), Point(part.coords[-1])
@@ -111,6 +128,11 @@ def split_links_at_nodes(raw_links_gdf: gpd.GeoDataFrame, node_points: dict, nod
                 "to_intersection": row["to_intersection"],
                 "intersection_type": row["intersection_type"],
                 "rotation": row["rotation"],
+                "block_id": row.get("block_id"),
+                "transition_a_id": row.get("transition_a_id"),
+                "transition_b_id": row.get("transition_b_id"),
+                "internal_orientation": row.get("internal_orientation"),
+                "internal_grid_slot": row.get("internal_grid_slot"),
                 "from_node": node_lookup.get(_point_key(part_start, precision)),
                 "to_node": node_lookup.get(_point_key(part_end, precision)),
                 "geometry": part,
