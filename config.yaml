@@ -1,0 +1,51 @@
+# =========================================================
+# City Simulation 설정
+# GUI에서는 이 YAML의 각 항목을 위젯과 1:1 매핑할 수 있다.
+# =========================================================
+simulation:
+  grid_size: 16
+  block_size: 32.0
+  center: 2.5
+  seed: 42
+
+intersection:
+  type_values: [1, 2, 3]
+  type_weights: [0.33, 0.33, 0.34]
+  rotations: [0, 90, 180, 270]
+  rotatable_types: [2, 3]
+  area_bounds: [1.0, 1.0, 4.0, 4.0]
+
+transition:
+  near_offset: 1.0
+  bend_offset: 2.0
+
+topology:
+  tolerance: 1.0e-8
+  coordinate_precision: 9
+
+output:
+  gpkg: ./output/city_sim.gpkg
+  links_layer: links
+  nodes_layer: nodes
+  overwrite: true
+
+visualization:
+  enabled: true
+  show_window: true
+  show_node_id: false
+  figure_size: [14, 14]
+  axis_padding_min: 1.0
+  axis_padding_max: 6.0
+  grid: true
+  intersection_colors:
+    1: blue
+    2: green
+    3: red
+  transition_color: black
+  node_color: black
+  intersection_linewidth: 2.5
+  transition_linewidth: 1.8
+  node_size: 30
+  node_label_offset: 0.08
+  node_label_fontsize: 6
+  intersection_label_fontsize: 7
