@@ -760,3 +760,42 @@ Offset 도로 대응
 교차로 추적
 NetworkX Directed Graph 변환
 ```
+
+---
+
+## 29. U-TURN 생성 규칙
+
+U-TURN은 `transition` 링크 자체가 아니라 **교차로 내부 `intersection` 링크의 정/역방향 pair** 사이에서 생성한다. `transition`은 해당 진입 side가 실제로 열려 있는지(`IN`과 `OUT` 모두 연결 가능한지) 확인하는 용도로만 사용한다.
+
+기본 설정은 다음과 같다.
+
+```yaml
+uturn:
+  enabled: true
+  probability: 0.90
+  position_ratio: 0.10
+```
+
+`probability`는 유효한 U-TURN 후보별 생성 확률이며 동일한 `simulation.seed`에서 동일한 결과를 재현해야 한다. `position_ratio`는 **Forward intersection link의 진행방향 시작점에서부터 누적 길이 비율**이며 기본값 `0.10`은 전체 길이의 10% 지점이다. 값은 `0 < position_ratio < 1` 범위만 허용한다.
+
+교차로 내부 링크의 canonical 방향은 `E/N = flow_dir F`, `W/S = flow_dir R`로 정의하며 수평 `E↔W`, 수직 `N↔S`를 각각 하나의 `road_pair_id`로 묶는다. Forward link의 진입 side는 `E→W side`, `N→S side`로 계산하고 해당 side에 양방향 Transition 연결이 존재할 때만 U-TURN 후보가 된다.
+
+U-TURN 진입점 `p_in`은 Forward geometry의 `length * position_ratio` 위치이며, 진출점 `p_out`은 동일 `road_pair_id`의 Reverse geometry에 `p_in`을 projection하여 구한다. `p_out`은 반드시 incoming 진행벡터 기준 LEFT에 있어야 하며 cross product가 양수인 경우에만 생성한다. Geometry는 `p_in`에서 현재 진행방향으로 진입하고 LEFT의 paired lane으로 이동한 뒤 Reverse 방향으로 빠져나가는 cubic Bezier 기반 LineString으로 생성한다.
+
+U-TURN 속성은 최소한 다음을 유지한다.
+
+```text
+link_type = uturn
+direction = UTURN
+turn_direction = LEFT
+LINK_K = 8
+LANE_NUM = 1
+road_pair_id
+from_link_id
+to_link_id
+uturn_position_ratio
+```
+
+일반 directed link에는 테스트 호환을 위해 `LINK_K=2`, `LANE_NUM=1`을 기본 부여하고 `flow_dir=F/R`에 따라 `K_CONTROL=0/5`를 사용한다.
+
+Topology에서는 U-TURN의 시작점과 종료점만 Junction으로 인정한다. U-TURN interior가 다른 도로와 교차하더라도 Node를 만들지 않고 U-TURN 자체도 interior Node에서 split하지 않는다. 반면 `p_in`과 `p_out`은 기존 intersection link의 interior와 만나는 실제 Junction이므로 해당 F/R 링크를 split하고 U-TURN의 `from_node`/`to_node`가 이 Node에 연결되어야 한다.

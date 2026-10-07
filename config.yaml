@@ -3,64 +3,69 @@
 # GUI에서는 이 YAML의 각 항목을 위젯과 1:1 매핑할 수 있다.
 # =========================================================
 simulation:
-  grid_size: 16
-  block_size: 32.0
-  center: 2.5
-  seed: 67
+  grid_size: 16 # Grid의 한 변에 포함되는 블록 수
+  block_size: 32.0 # 각 블록의 한 변 길이
+  center: 2.5 # 시뮬레이션 공간의 중심 좌표
+  seed: 9809 # 난수 생성 시드
 
 intersection:
-  type_values: [1, 2, 3]
-  type_weights: [0.33, 0.33, 0.34]
-  rotations: [0, 90, 180, 270]
-  rotatable_types: [2, 3]
-  area_bounds: [1.0, 1.0, 4.0, 4.0]
+  type_values: [1, 2, 3] # 교차로 유형 값
+  type_weights: [0.33, 0.33, 0.34] # 각 교차로 유형의 생성 확률
+  rotations: [0, 90, 180, 270] # 교차로 회전 각도
+  rotatable_types: [2, 3] # 회전 가능한 교차로 유형
+  area_bounds: [1.0, 1.0, 4.0, 4.0] # 교차로 면적 경계 [min_x, min_y, max_x, max_y]
 
 transition:
-  near_offset: 1.0
-  bend_offset: 2.0
+  near_offset: 1.0 # 교차로 근처 전환 도로 오프셋
+  bend_offset: 2.0 # 전환 도로 굴곡 오프셋
+
+uturn:
+  enabled: true #유턴 생성여부
+  probability: 0.9 # 유턴 생성 확률
+  position_ratio: 0.1 # 유턴 위치 비율(도로 길이에 대한 비율)
 
 # 블록 내부 이면도로: n×n grid 샘플 위치에서 축 정렬 양방향 단선을 생성
-internal_road:
-  enabled: true
-  block_probability: 1.0
-  min_count_per_block: 2
-  max_count_per_block: 5
+internal_road: 
+  enabled: true # 내부 이면도로 생성 여부
+  block_probability: 1.0 # 블록 내부 이면도로 생성 확률
+  min_count_per_block: 2 # 블록당 최소 이면도로 생성 시도 수
+  max_count_per_block: 5 # 블록당 최대 이면도로 생성 시도 수
 
   # 한 Block 내부의 샘플 column/row 수. n이면 n개 X column + n개 Y row 후보를 만든다.
-  sampling_grid_size: 5
+  sampling_grid_size: 5 # 한 Block 내부의 샘플 column/row 수. n이면 n개 X column + n개 Y row 후보를 만든다.
 
-  # S↔N 수직선 / W↔E 수평선 선택 가중치. diagonal은 생성하지 않는다.
-  vertical_weight: 0.5
-  horizontal_weight: 0.5
-  transition_endpoint_clearance: 2
-  min_length: 5.0
-  max_attempts: 50
+  # S↔N 수직선 / W↔E 수평선 선택 가중치.
+  vertical_weight: 0.5 # S↔N 수직선 선택 가중치
+  horizontal_weight: 0.5 # W↔E 수평선 선택 가중치
+  transition_endpoint_clearance: 2 # 전환 도로의 끝점 간격
+  min_length: 5.0 # 내부 이면도로 최소 길이
+  max_attempts: 50 # 블록당 내부 이면도로 생성 최대 시도 수
 
 topology:
-  tolerance: 1.0e-8
-  coordinate_precision: 9
+  tolerance: 1.0e-8 # 토폴로지 계산 시 허용 오차
+  coordinate_precision: 9 # 좌표 정밀도
 
 output:
-  gpkg: ./output/city_sim.gpkg
-  links_layer: links
-  nodes_layer: nodes
-  overwrite: true
+  gpkg: ./output/city_sim.gpkg # 출력 GPKG 파일 경로
+  links_layer: links # 링크 레이어 이름
+  nodes_layer: nodes # 노드 레이어 이름
+  overwrite: true # 기존 출력 파일 덮어쓰기 여부
 
 visualization:
-  enabled: false
-  show_window: false
-  show_node_id: false
-  figure_size: [14, 14]
-  axis_padding_min: 1.0
-  axis_padding_max: 6.0
+  enabled: false # 시각화 활성화 여부
+  show_window: false # 시각화 창 표시 여부
+  show_node_id: false # 노드 ID 표시 여부
+  figure_size: [14, 14] # 시각화 그림 크기
+  axis_padding_min: 1.0 # 시각화 축 최소 패딩
+  axis_padding_max: 6.0 # 시각화 축 최대 패딩
   grid: true
   intersection_colors:
-    1: blue
-    2: green
-    3: red
-  transition_color: black
-  internal_road_color: dimgray
-  node_color: black
+    1: blue # 교차로 유형 1 색상
+    2: green # 교차로 유형 2 색상
+    3: red # 교차로 유형 3 색상
+  transition_color: black # 전환 도로 색상
+  internal_road_color: dimgray # 내부 이면도로 색상
+  node_color: black # 노드 색상
   intersection_linewidth: 2.5
   transition_linewidth: 1.8
   internal_road_linewidth: 1.2
@@ -68,3 +73,4 @@ visualization:
   node_label_offset: 0.08
   node_label_fontsize: 6
   intersection_label_fontsize: 7
+

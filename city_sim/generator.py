@@ -45,6 +45,17 @@ def _transform_geometry(geometry, rotation: int, dx: float, dy: float, center: f
     return translate(geometry, xoff=dx, yoff=dy)
 
 
+def _base_link_direction(geometry: LineString) -> str:
+    """템플릿 LineString의 좌표 순서에서 논리적 진행방향(E/W/N/S)을 계산한다."""
+    x0, y0 = geometry.coords[0]
+    x1, y1 = geometry.coords[-1]
+    dx = x1 - x0
+    dy = y1 - y0
+    if abs(dx) >= abs(dy):
+        return "E" if dx >= 0 else "W"
+    return "N" if dy >= 0 else "S"
+
+
 def _horizontal_transition(p0, p5, direction: str, near_offset: float, bend_offset: float) -> LineString:
     middle_y = (p0.y + p5.y) / 2
     sign = 1 if direction == "E" else -1
@@ -123,12 +134,15 @@ def build_raw_network(config: AppConfig, type_grid: TypeGrid | None = None):
             })
 
             # Intersection 내부 링크
+            # 템플릿 geometry의 좌표 순서가 실제 통행방향이며, 회전 후 cardinal direction도 함께 회전한다.
             for base_geom in template["links"]:
+                base_direction = _base_link_direction(base_geom)
+                direction = PORT_ROTATION[rotation][base_direction]
                 geom = _transform_geometry(base_geom, rotation, dx, dy, center)
                 raw_links.append({
                     "raw_link_id": raw_link_id,
                     "link_type": "intersection",
-                    "direction": None,
+                    "direction": direction,
                     "intersection_id": intersection_id,
                     "from_intersection": intersection_id,
                     "to_intersection": intersection_id,

@@ -81,6 +81,13 @@ class VisualizationConfig:
 
 
 @dataclass(frozen=True)
+class UTurnConfig:
+    enabled: bool
+    probability: float
+    position_ratio: float
+
+
+@dataclass(frozen=True)
 class AppConfig:
     simulation: SimulationConfig
     intersection: IntersectionConfig
@@ -89,6 +96,7 @@ class AppConfig:
     topology: TopologyConfig
     output: OutputConfig
     visualization: VisualizationConfig
+    uturn: UTurnConfig
     config_path: Path
 
 
@@ -145,6 +153,12 @@ def _validate(config: AppConfig) -> None:
         raise ValueError("topology.tolerance는 0보다 커야 합니다.")
     if topo.coordinate_precision < 0:
         raise ValueError("topology.coordinate_precision은 0 이상이어야 합니다.")
+
+    # uturn validation
+    if not 0 <= config.uturn.probability <= 1:
+        raise ValueError("uturn.probability는 0~1 범위여야 합니다.")
+    if not 0 < config.uturn.position_ratio < 1:
+        raise ValueError("uturn.position_ratio는 0보다 크고 1보다 작아야 합니다.")
 
 
 def load_config(config_path: str | Path) -> AppConfig:
@@ -228,6 +242,11 @@ def load_config(config_path: str | Path) -> AppConfig:
             node_label_offset=float(_require(visualization, "node_label_offset", "visualization")),
             node_label_fontsize=float(_require(visualization, "node_label_fontsize", "visualization")),
             intersection_label_fontsize=float(_require(visualization, "intersection_label_fontsize", "visualization")),
+        ),
+        uturn=UTurnConfig(
+            enabled=bool(_require(raw, "uturn", "root")["enabled"]),
+            probability=float(_require(raw, "uturn", "root")["probability"]),
+            position_ratio=float(_require(raw, "uturn", "root")["position_ratio"]),
         ),
         config_path=config_path,
     )
